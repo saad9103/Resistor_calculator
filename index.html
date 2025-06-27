@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resistor Inventory Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #1a202c;
+        color: #e2e8f0;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .tab-button.active {
+        background-color: #4a5568;
+        color: #ffffff;
+      }
+      .color-band {
+        width: 2rem;
+        height: 4rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      .color-band:hover {
+        transform: scale(1.1);
+      }
+      .color-palette {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.5rem;
+      }
+      .color-palette-button {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 9999px;
+        cursor: pointer;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 100;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background-color: #2d3748;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        width: 90%;
+        max-width: 500px;
+      }
+      .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 2s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <div class="container mx-auto p-4 md:p-8">
+      <header class="text-center mb-8">
+        <h1 class="text-4xl md:text-5xl font-bold text-emerald-400">
+          Resistor Inventory Calculator
+        </h1>
+        <p class="text-lg text-slate-400 mt-2">
+          Manage and calculate resistor combinations with ease.Created by your
+          boy Saadi.
+        </p>
+      </header>
+
+      <!-- Tabs -->
+      <div class="mb-8 flex justify-center border-b border-slate-700">
+        <button
+          class="tab-button active text-lg py-3 px-6 font-semibold transition-colors duration-300"
+          onclick="openTab(event, 'inventoryTab')"
+        >
+          Inventory
+        </button>
+        <button
+          class="tab-button text-lg py-3 px-6 font-semibold transition-colors duration-300"
+          onclick="openTab(event, 'calculateTab')"
+        >
+          Calculate
+        </button>
+      </div>
+
+      <!-- Inventory Tab -->
+      <div id="inventoryTab" class="tab-content active fade-in">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <!-- Add Resistor Form -->
+          <div class="bg-slate-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-emerald-300">
+              Add New Resistor
+            </h2>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1"
+                  >Input Method</label
+                >
+                <select
+                  id="inputMethod"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="value">By Value</option>
+                  <option value="color">By Color Code</option>
+                </select>
+              </div>
+
+              <div id="valueInputContainer">
+                <label
+                  for="resistorValue"
+                  class="block text-sm font-medium text-slate-300 mb-1"
+                  >Resistor Value (Ohms)</label
+                >
+                <input
+                  type="number"
+                  id="resistorValue"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g., 1000"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1"
+                  >Number of Bands</label
+                >
+                <select
+                  id="bandCount"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="4">4-Band</option>
+                  <option value="3">3-Band</option>
+                </select>
+              </div>
+
+              <div id="colorPickerContainer" class="hidden">
+                <label class="block text-sm font-medium text-slate-300 mb-2"
+                  >Color Bands</label
+                >
+                <div
+                  class="flex items-center justify-center space-x-2 bg-slate-700 p-4 rounded-lg"
+                  style="
+                    background-image: linear-gradient(
+                        45deg,
+                        #2d3748 25%,
+                        transparent 25%
+                      ),
+                      linear-gradient(-45deg, #2d3748 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, #2d3748 75%),
+                      linear-gradient(-45deg, transparent 75%, #2d3748 75%);
+                    background-size: 20px 20px;
+                    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+                  "
+                >
+                  <div
+                    class="relative bg-amber-200 w-48 h-16 rounded-lg flex items-center justify-center space-x-1"
+                  >
+                    <div
+                      id="band1"
+                      class="color-band"
+                      style="background-color: black"
+                      onclick="showColorPalette(1)"
+                    ></div>
+                    <div
+                      id="band2"
+                      class="color-band"
+                      style="background-color: black"
+                      onclick="showColorPalette(2)"
+                    ></div>
+                    <div
+                      id="band3"
+                      class="color-band"
+                      style="background-color: black"
+                      onclick="showColorPalette(3)"
+                    ></div>
+                    <div
+                      id="band4"
+                      class="color-band"
+                      style="background-color: black"
+                      onclick="showColorPalette(4)"
+                    ></div>
+                  </div>
+                </div>
+                <p
+                  id="colorValueDisplay"
+                  class="text-center mt-2 text-slate-400"
+                ></p>
+              </div>
+
+              <div>
+                <label
+                  for="quantity"
+                  class="block text-sm font-medium text-slate-300 mb-1"
+                  >Quantity</label
+                >
+                <input
+                  type="number"
+                  id="quantity"
+                  value="1"
+                  min="1"
+                  class="w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+              <button
+                id="addResistorBtn"
+                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md transition-transform transform hover:scale-105"
+              >
+                Add to Inventory
+              </button>
+            </div>
+          </div>
+
+          <!-- Resistor Inventory -->
+          <div class="bg-slate-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-emerald-300">
+              My Inventory
+            </h2>
+            <div
+              id="inventoryList"
+              class="space-y-3 max-h-96 overflow-y-auto pr-2"
+            >
+              <!-- Inventory items will be injected here -->
+              <div class="loader"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calculate Tab -->
+      <div id="calculateTab" class="tab-content fade-in">
+        <div class="bg-slate-800 p-6 rounded-lg shadow-lg">
+          <h2 class="text-2xl font-bold mb-4 text-emerald-300">
+            Calculate Resistance
+          </h2>
+          <div class="flex flex-col sm:flex-row items-center gap-4 mb-6">
+            <input
+              type="number"
+              id="requiredResistance"
+              class="flex-grow w-full bg-slate-700 border border-slate-600 rounded-md px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Enter required resistance (Ohms)"
+            />
+            <button
+              id="calculateBtn"
+              class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md transition-transform transform hover:scale-105"
+            >
+              Find Combinations
+            </button>
+          </div>
+          <div id="calculationResult" class="mt-6 space-y-4">
+            <!-- Calculation results will be displayed here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Color Palette Modal -->
+    <div
+      id="colorPaletteModal"
+      class="modal"
+      onclick="closeColorPalette(event)"
+    >
+      <div class="modal-content">
+        <h3 class="text-xl font-bold mb-4 text-white">Select a Color</h3>
+        <div id="modalColorPalette" class="color-palette">
+          <!-- Color buttons will be injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Message Modal -->
+    <div id="messageModal" class="modal">
+      <div class="modal-content">
+        <p id="messageText" class="text-lg text-center text-white"></p>
+        <button
+          id="messageOkBtn"
+          class="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+
+    <script type="module">
+      // --- Google Apps Script Configuration ---
+      // IMPORTANT: Replace with your actual Google Apps Script Web App URL
+      const gasUrl =
+        "https://script.google.com/macros/s/AKfycbwqpc3ycl_WuEto7DMRjhumL---VH1TYRQCf-gBCw3gsIWhHoQBk19LXDzy_3L1Ym0/exec";
+
+      // --- App State ---
+      let inventory = [];
+      let currentBandSelection = 1;
+      const colors = {
+        black: { value: 0, multiplier: 1, tolerance: null, hex: "#2d3748" },
+        brown: { value: 1, multiplier: 10, tolerance: 1, hex: "#854d0e" },
+        red: { value: 2, multiplier: 100, tolerance: 2, hex: "#dc2626" },
+        orange: { value: 3, multiplier: 1000, tolerance: null, hex: "#f97316" },
+        yellow: {
+          value: 4,
+          multiplier: 10000,
+          tolerance: null,
+          hex: "#eab308",
+        },
+        green: { value: 5, multiplier: 100000, tolerance: 0.5, hex: "#22c55e" },
+        blue: {
+          value: 6,
+          multiplier: 1000000,
+          tolerance: 0.25,
+          hex: "#3b82f6",
+        },
+        violet: {
+          value: 7,
+          multiplier: 10000000,
+          tolerance: 0.1,
+          hex: "#8b5cf6",
+        },
+        grey: { value: 8, multiplier: null, tolerance: 0.05, hex: "#6b7280" },
+        white: { value: 9, multiplier: null, tolerance: null, hex: "#f1f5f9" },
+        gold: { value: null, multiplier: 0.1, tolerance: 5, hex: "#ca8a04" },
+        silver: {
+          value: null,
+          multiplier: 0.01,
+          tolerance: 10,
+          hex: "#d1d5db",
+        },
+      };
+      const colorNames = Object.keys(colors);
+      let selectedColors = ["black", "black", "black", "gold"];
+
+      // --- DOM Elements ---
+      const inputMethodSelect = document.getElementById("inputMethod");
+      const valueInputContainer = document.getElementById(
+        "valueInputContainer"
+      );
+      const colorPickerContainer = document.getElementById(
+        "colorPickerContainer"
+      );
+      const bandCountSelect = document.getElementById("bandCount");
+      const addResistorBtn = document.getElementById("addResistorBtn");
+      const inventoryList = document.getElementById("inventoryList");
+      const calculateBtn = document.getElementById("calculateBtn");
+      const calculationResult = document.getElementById("calculationResult");
+      const colorPaletteModal = document.getElementById("colorPaletteModal");
+      const modalColorPalette = document.getElementById("modalColorPalette");
+      const messageModal = document.getElementById("messageModal");
+      const messageText = document.getElementById("messageText");
+      const messageOkBtn = document.getElementById("messageOkBtn");
+
+      // --- UI Logic ---
+      function showMessage(message) {
+        messageText.textContent = message;
+        messageModal.style.display = "flex";
+      }
+      messageOkBtn.addEventListener(
+        "click",
+        () => (messageModal.style.display = "none")
+      );
+
+      function openTab(evt, tabName) {
+        const tabcontent = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabcontent.length; i++) {
+          tabcontent[i].style.display = "none";
+          tabcontent[i].classList.remove("active");
+        }
+        const tablinks = document.getElementsByClassName("tab-button");
+        for (let i = 0; i < tablinks.length; i++) {
+          tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.className += " active";
+      }
+      window.openTab = openTab;
+
+      function updateInputMethod() {
+        if (inputMethodSelect.value === "color") {
+          valueInputContainer.style.display = "none";
+          colorPickerContainer.style.display = "block";
+          updateBandVisibility();
+        } else {
+          valueInputContainer.style.display = "block";
+          colorPickerContainer.style.display = "none";
+        }
+      }
+
+      function updateBandVisibility() {
+        const bandCount = parseInt(bandCountSelect.value);
+        document.getElementById("band3").style.display =
+          bandCount >= 3 ? "block" : "none";
+        document.getElementById("band4").style.display =
+          bandCount >= 4 ? "block" : "none";
+        if (bandCount === 3) {
+          selectedColors[2] = "black";
+          selectedColors[3] = "none";
+        } else {
+          selectedColors[3] =
+            selectedColors[3] === "none" ? "gold" : selectedColors[3];
+        }
+        updateColorPickerUI();
+      }
+
+      function renderInventory() {
+        inventoryList.innerHTML = "";
+        if (inventory.length === 0) {
+          inventoryList.innerHTML =
+            '<p class="text-slate-400 text-center">Your inventory is currently empty.</p>';
+          return;
+        }
+        inventory
+          .sort((a, b) => a.value - b.value)
+          .forEach((item) => {
+            const itemEl = document.createElement("div");
+            itemEl.className =
+              "fade-in bg-slate-700 p-4 rounded-lg flex items-center justify-between";
+            const colorBands = item.colors
+              .map((colorName) => {
+                const colorHex = colors[colorName]?.hex || "#1a202c";
+                return `<div class="w-4 h-8 rounded-sm" style="background-color: ${colorHex};"></div>`;
+              })
+              .join("");
+            itemEl.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="relative bg-amber-200 w-24 h-8 rounded-md flex items-center justify-center space-x-1 p-1">${colorBands}</div>
+                        <div>
+                            <p class="font-bold text-white">${formatResistance(
+                              item.value
+                            )}</p>
+                            <p class="text-sm text-slate-400">Qty: ${
+                              item.quantity
+                            }</p>
+                        </div>
+                    </div>
+                    <button class="text-red-400 hover:text-red-300 font-semibold" data-id="${
+                      item.id
+                    }">Delete</button>
+                `;
+            inventoryList.appendChild(itemEl);
+            itemEl.querySelector("button").addEventListener("click", (e) => {
+              const docId = e.target.getAttribute("data-id");
+              deleteResistor(docId);
+            });
+          });
+      }
+
+      // --- Color Picker Logic ---
+      function showColorPalette(bandNumber) {
+        currentBandSelection = bandNumber;
+        modalColorPalette.innerHTML = "";
+        const bandCount = parseInt(bandCountSelect.value);
+        let availableColors = [];
+        if (bandNumber <= 2 || (bandNumber === 3 && bandCount === 4)) {
+          availableColors = colorNames.filter((c) => colors[c].value !== null);
+        } else if (
+          (bandNumber === 3 && bandCount === 3) ||
+          (bandNumber === 3 && bandCount === 4)
+        ) {
+          availableColors = colorNames.filter(
+            (c) => colors[c].multiplier !== null
+          );
+        } else {
+          // Tolerance band
+          availableColors = colorNames.filter(
+            (c) => colors[c].tolerance !== null
+          );
+        }
+        availableColors.forEach((name) => {
+          const button = document.createElement("button");
+          button.className = "color-palette-button";
+          button.style.backgroundColor = colors[name].hex;
+          button.onclick = () => selectColor(name);
+          modalColorPalette.appendChild(button);
+        });
+        colorPaletteModal.style.display = "flex";
+      }
+      window.showColorPalette = showColorPalette;
+
+      function closeColorPalette(event) {
+        if (event.target === colorPaletteModal) {
+          colorPaletteModal.style.display = "none";
+        }
+      }
+      window.closeColorPalette = closeColorPalette;
+
+      function selectColor(colorName) {
+        selectedColors[currentBandSelection - 1] = colorName;
+        updateColorPickerUI();
+        colorPaletteModal.style.display = "none";
+      }
+
+      function updateColorPickerUI() {
+        for (let i = 1; i <= 4; i++) {
+          const bandEl = document.getElementById(`band${i}`);
+          bandEl.style.backgroundColor =
+            colors[selectedColors[i - 1]]?.hex || "transparent";
+        }
+        const { value, tolerance } = calculateValueFromColors();
+        const display = document.getElementById("colorValueDisplay");
+        if (value !== null) {
+          const bandCount = parseInt(bandCountSelect.value);
+          const tolText = tolerance
+            ? `±${tolerance}%`
+            : bandCount === 3
+            ? "±20%"
+            : "";
+          display.textContent = `Value: ${formatResistance(value)} ${tolText}`;
+        } else {
+          display.textContent = "Invalid color combination";
+        }
+      }
+
+      // --- Calculation Logic ---
+      function calculateValueFromColors() {
+        const bandCount = parseInt(bandCountSelect.value);
+        let d1 = colors[selectedColors[0]].value;
+        let d2 = colors[selectedColors[1]].value;
+        let mult, tolerance;
+
+        if (bandCount === 3) {
+          mult = colors[selectedColors[2]].multiplier;
+          if (d1 === null || d2 === null || mult === null)
+            return { value: null };
+          tolerance = 20;
+          return { value: (d1 * 10 + d2) * mult, tolerance };
+        } else {
+          // 4-band
+          mult = colors[selectedColors[2]].multiplier;
+          tolerance = colors[selectedColors[3]].tolerance;
+          if (d1 === null || d2 === null || mult === null || tolerance === null)
+            return { value: null };
+          return { value: (d1 * 10 + d2) * mult, tolerance };
+        }
+      }
+
+      function valueToColor(value, bandCount = 4) {
+        if (value <= 0) return [];
+        let valueStr = value.toExponential(2);
+        let [mantissa, exponent] = valueStr.split("e");
+
+        let d1_val = parseInt(mantissa[0]);
+        let d2_val = parseInt(mantissa[2]);
+        let mult_power = parseInt(exponent) - 1;
+        let mult_val = Math.pow(10, mult_power);
+
+        const findColorBy = (prop, val) =>
+          colorNames.find((name) => colors[name][prop] === val);
+
+        let bands = [
+          findColorBy("value", d1_val),
+          findColorBy("value", d2_val),
+          findColorBy("multiplier", mult_val),
+        ];
+
+        if (bandCount === 4) bands.push("gold");
+        return bands.filter((b) => b);
+      }
+
+      function formatResistance(value) {
+        if (value >= 1000000) return (value / 1000000).toPrecision(3) + " MΩ";
+        if (value >= 1000) return (value / 1000).toPrecision(3) + " kΩ";
+        return value.toPrecision(3) + " Ω";
+      }
+
+      // --- Google Apps Script Interaction ---
+      async function apiCall(action, payload = {}) {
+        if (gasUrl === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL") {
+          showMessage(
+            "Please configure the Google Apps Script URL in the code."
+          );
+          throw new Error("GAS URL not configured.");
+        }
+        try {
+          const response = await fetch(`${gasUrl}?action=${action}`, {
+            method: "POST",
+            redirect: "follow",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+          });
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || "API call failed");
+          }
+          return result;
+        } catch (error) {
+          console.error(`Error during ${action}:`, error);
+          showMessage(`An error occurred: ${error.message}`);
+          throw error;
+        }
+      }
+
+      async function getInventory() {
+        inventoryList.innerHTML = '<div class="loader"></div>';
+        try {
+          const result = await apiCall("getInventory");
+          inventory = result.data || [];
+          renderInventory();
+        } catch (error) {
+          inventoryList.innerHTML =
+            '<p class="text-red-400 text-center">Failed to load inventory.</p>';
+        }
+      }
+
+      async function addResistor() {
+        addResistorBtn.disabled = true;
+        const quantity = parseInt(document.getElementById("quantity").value);
+        if (isNaN(quantity) || quantity <= 0) {
+          showMessage("Please enter a valid quantity.");
+          addResistorBtn.disabled = false;
+          return;
+        }
+
+        let value, colorBands;
+        const bandCount = parseInt(bandCountSelect.value);
+
+        if (inputMethodSelect.value === "value") {
+          value = parseFloat(document.getElementById("resistorValue").value);
+          if (isNaN(value) || value <= 0) {
+            showMessage("Please enter a valid resistor value.");
+            addResistorBtn.disabled = false;
+            return;
+          }
+          colorBands = valueToColor(value, bandCount);
+          if (colorBands.length < bandCount) {
+            showMessage(
+              "Could not determine a standard color code for this value."
+            );
+            addResistorBtn.disabled = false;
+            return;
+          }
+        } else {
+          const calc = calculateValueFromColors();
+          value = calc.value;
+          if (value === null) {
+            showMessage("Invalid color combination selected.");
+            addResistorBtn.disabled = false;
+            return;
+          }
+          colorBands =
+            bandCount === 3
+              ? selectedColors.slice(0, 3)
+              : selectedColors.slice(0, 4);
+        }
+
+        const newResistor = { value, quantity, colors: colorBands, bandCount };
+
+        try {
+          await apiCall("addResistor", newResistor);
+          showMessage("Resistor added successfully!");
+          document.getElementById("resistorValue").value = "";
+          document.getElementById("quantity").value = 1;
+          await getInventory(); // Refresh list
+        } finally {
+          addResistorBtn.disabled = false;
+        }
+      }
+
+      async function deleteResistor(id) {
+        try {
+          await apiCall("deleteResistor", { id });
+          showMessage("Resistor deleted.");
+          await getInventory(); // Refresh list
+        } catch (error) {
+          // Error message is already shown by apiCall
+        }
+      }
+
+      // --- Calculation Engine ---
+      function findCombinations() {
+        const targetResistance = parseFloat(
+          document.getElementById("requiredResistance").value
+        );
+        calculationResult.innerHTML =
+          '<p class="text-center text-slate-400">Calculating...</p>';
+
+        if (isNaN(targetResistance) || targetResistance <= 0) {
+          calculationResult.innerHTML =
+            '<p class="text-center text-red-400">Please enter a valid positive resistance value.</p>';
+          return;
+        }
+
+        const tolerance = 0.01;
+        const results = [];
+
+        // Sort by quantity DESC to favor abundant resistors
+        const availableResistors = inventory
+          .flatMap((r) => Array(r.quantity).fill(r))
+          .sort((a, b) => b.quantity - a.quantity);
+
+        const memo = new Set();
+
+        // Format expression
+        function fmtPath(path) {
+          return path.map((p) => formatResistance(p.value)).join(" + ");
+        }
+
+        // Parallel equivalent for any number of resistors
+        function parallel(resistors) {
+          const sum = resistors.reduce((acc, r) => acc + 1 / r.value, 0);
+          return 1 / sum;
+        }
+
+        // Unique hash for memoization
+        function hash(path) {
+          return path
+            .map((r) => r.value)
+            .sort()
+            .join(",");
+        }
+
+        function recurse(path, remaining, depth) {
+          if (depth > 5) return;
+
+          const pathHash = hash(path);
+          if (memo.has(pathHash)) return;
+          memo.add(pathHash);
+
+          // Series check
+          const seriesSum = path.reduce((sum, r) => sum + r.value, 0);
+          if (
+            Math.abs(seriesSum - targetResistance) / targetResistance <
+            tolerance
+          ) {
+            results.push({
+              combination: [...path],
+              expression: fmtPath(path),
+              total: seriesSum,
+              type: "Series",
+            });
+          }
+
+          // Parallel group checks for 2 or 3
+          if (remaining.length >= 2) {
+            for (let i = 0; i < remaining.length; i++) {
+              for (let j = i + 1; j < remaining.length; j++) {
+                const pGroup = [remaining[i], remaining[j]];
+                const remainingAfterP = remaining.filter(
+                  (_, idx) => idx !== i && idx !== j
+                );
+                const baseSum = seriesSum + parallel(pGroup);
+                if (
+                  Math.abs(baseSum - targetResistance) / targetResistance <
+                  tolerance
+                ) {
+                  const expr =
+                    (path.length > 0 ? fmtPath(path) + " + " : "") +
+                    `(${pGroup
+                      .map((r) => formatResistance(r.value))
+                      .join(" || ")})`;
+                  results.push({
+                    combination: [...path, ...pGroup],
+                    expression: expr,
+                    total: baseSum,
+                    type: "Series/Parallel",
+                  });
+                }
+              }
+            }
+          }
+
+          // Recursive call
+          for (let i = 0; i < remaining.length; i++) {
+            const r = remaining[i];
+            recurse(
+              [...path, r],
+              [...remaining.slice(0, i), ...remaining.slice(i + 1)],
+              depth + 1
+            );
+          }
+        }
+
+        // Direct match
+        const direct = availableResistors.find(
+          (r) =>
+            Math.abs(r.value - targetResistance) / targetResistance < tolerance
+        );
+        if (direct) {
+          results.push({
+            combination: [direct],
+            expression: formatResistance(direct.value),
+            total: direct.value,
+            type: "Direct Match",
+          });
+        }
+
+        recurse([], availableResistors, 0);
+
+        renderCalculationResults(results, targetResistance);
+      }
+
+      // function findCombinations() {
+      //   // ... (Calculation logic remains the same as previous version)
+      //   const targetResistance = parseFloat(
+      //     document.getElementById("requiredResistance").value
+      //   );
+      //   calculationResult.innerHTML =
+      //     '<p class="text-center text-slate-400">Calculating...</p>';
+
+      //   if (isNaN(targetResistance) || targetResistance <= 0) {
+      //     calculationResult.innerHTML =
+      //       '<p class="text-center text-red-400">Please enter a valid positive resistance value.</p>';
+      //     return;
+      //   }
+
+      //   let results = [];
+      //   const availableResistors = inventory.flatMap((r) =>
+      //     Array(r.quantity).fill(r)
+      //   );
+      //   const tolerance = 0.01; // 1% tolerance
+
+      //   // Recursive function to find combinations
+      //   function find(target, path, expression, resistors, depth) {
+      //     if (depth > 5) return;
+
+      //     // Series
+      //     for (let i = 0; i < resistors.length; i++) {
+      //       const r = resistors[i];
+      //       const newPath = [...path, r];
+      //       const newResistors = [
+      //         ...resistors.slice(0, i),
+      //         ...resistors.slice(i + 1),
+      //       ];
+      //       const seriesSum = newPath.reduce((sum, res) => sum + res.value, 0);
+
+      //       if (
+      //         Math.abs(seriesSum - targetResistance) / targetResistance <
+      //         tolerance
+      //       ) {
+      //         const seriesExpr = newPath
+      //           .map((p) => formatResistance(p.value))
+      //           .join(" + ");
+      //         results.push({
+      //           combination: newPath,
+      //           expression: seriesExpr,
+      //           total: seriesSum,
+      //           type: "Series",
+      //         });
+      //       }
+      //       if (seriesSum < targetResistance) {
+      //         find(target, newPath, expression, newResistors, depth + 1);
+      //       }
+      //     }
+
+      //     // Parallel (with up to 2 resistors for simplicity) + Series
+      //     if (path.length <= 3 && resistors.length >= 2) {
+      //       for (let i = 0; i < resistors.length; i++) {
+      //         for (let j = i + 1; j < resistors.length; j++) {
+      //           const r1 = resistors[i];
+      //           const r2 = resistors[j];
+      //           const parallelVal =
+      //             (r1.value * r2.value) / (r1.value + r2.value);
+
+      //           const basePath = path.reduce((sum, res) => sum + res.value, 0);
+      //           const total = basePath + parallelVal;
+
+      //           if (
+      //             Math.abs(total - targetResistance) / targetResistance <
+      //             tolerance
+      //           ) {
+      //             let parallelExpr = `(${formatResistance(
+      //               r1.value
+      //             )} || ${formatResistance(r2.value)})`;
+      //             let fullExpr =
+      //               path.length > 0
+      //                 ? `${path
+      //                     .map((p) => formatResistance(p.value))
+      //                     .join(" + ")} + ${parallelExpr}`
+      //                 : parallelExpr;
+      //             results.push({
+      //               combination: [...path, r1, r2],
+      //               expression: fullExpr,
+      //               total: total,
+      //               type: "Series/Parallel",
+      //             });
+      //           }
+      //         }
+      //       }
+      //     }
+      //   }
+
+      //   // Direct Match
+      //   const directMatch = availableResistors.find(
+      //     (r) =>
+      //       Math.abs(r.value - targetResistance) / targetResistance < tolerance
+      //   );
+      //   if (directMatch) {
+      //     results.push({
+      //       combination: [directMatch],
+      //       expression: formatResistance(directMatch.value),
+      //       total: directMatch.value,
+      //       type: "Direct Match",
+      //     });
+      //   }
+
+      //   find(targetResistance, [], "", availableResistors, 1);
+
+      //   renderCalculationResults(results, targetResistance);
+      // }
+
+      function renderCalculationResults(results, target) {
+        calculationResult.innerHTML = "";
+        if (results.length === 0) {
+          calculationResult.innerHTML = `<p class="text-center text-amber-400">No combination found for ${formatResistance(
+            target
+          )} within 1% tolerance and 5 resistors.</p>`;
+          return;
+        }
+
+        results.sort((a, b) => {
+          const diffA = Math.abs(a.total - target);
+          const diffB = Math.abs(b.total - target);
+          if (diffA !== diffB) return diffA - diffB;
+          return a.combination.length - b.combination.length;
+        });
+
+        const uniqueResults = [
+          ...new Map(results.map((item) => [item.expression, item])).values(),
+        ].slice(0, 10);
+
+        uniqueResults.forEach((result) => {
+          const resultEl = document.createElement("div");
+          resultEl.className = "fade-in bg-slate-700 p-4 rounded-lg";
+
+          const requiredResistors = result.combination.reduce((acc, curr) => {
+            const key = curr.id;
+            acc[key] = acc[key] || { ...curr, count: 0 };
+            acc[key].count++;
+            return acc;
+          }, {});
+
+          const resistorListHTML = Object.values(requiredResistors)
+            .map((r) => {
+              const colorBands = r.colors
+                .map(
+                  (colorName) =>
+                    `<div class="w-2 h-4 rounded-sm" style="background-color: ${
+                      colors[colorName]?.hex || "#1a202c"
+                    };"></div>`
+                )
+                .join("");
+              return `<div class="flex items-center justify-between text-sm py-1">
+                                <div class="flex items-center gap-2">
+                                    <div class="relative bg-amber-200 w-16 h-6 rounded-md flex items-center justify-center space-x-0.5 p-0.5">${colorBands}</div>
+                                    <span>${formatResistance(r.value)}</span>
+                                </div>
+                                <span>x ${r.count}</span>
+                            </div>`;
+            })
+            .join("");
+
+          resultEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                           <p class="text-lg font-bold text-emerald-300">${
+                             result.type
+                           }: ${result.expression}</p>
+                           <p class="text-sm text-slate-400">Achieved: ${formatResistance(
+                             result.total
+                           )}</p>
+                        </div>
+                        <button class="add-to-logs-btn bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1 px-3 rounded-md transition-transform transform hover:scale-105">Add to Logs</button>
+                    </div>
+                    <div class="mt-4 border-t border-slate-600 pt-2">
+                        <h4 class="font-semibold text-white mb-2">Resistors Required:</h4>
+                        <div class="space-y-1">${resistorListHTML}</div>
+                    </div>`;
+          calculationResult.appendChild(resultEl);
+
+          resultEl
+            .querySelector(".add-to-logs-btn")
+            .addEventListener("click", async () => {
+              await updateInventoryFromCalculation(
+                Object.values(requiredResistors)
+              );
+              calculationResult.innerHTML = `<p class="text-center text-green-400">Inventory updated successfully!</p>`;
+            });
+        });
+      }
+
+      async function updateInventoryFromCalculation(usedResistors) {
+        try {
+          await apiCall("updateInventory", { resistors: usedResistors });
+          showMessage("Inventory updated.");
+          await getInventory(); // Refresh inventory list
+        } catch (error) {
+          // Error message already handled by apiCall
+        }
+      }
+
+      // --- Event Listeners ---
+      document.addEventListener("DOMContentLoaded", () => {
+        getInventory();
+        inputMethodSelect.addEventListener("change", updateInputMethod);
+        bandCountSelect.addEventListener("change", updateBandVisibility);
+        addResistorBtn.addEventListener("click", addResistor);
+        calculateBtn.addEventListener("click", findCombinations);
+        updateInputMethod();
+      });
+    </script>
+  </body>
+</html>
