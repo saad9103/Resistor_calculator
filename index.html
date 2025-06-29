@@ -105,8 +105,7 @@
           Resistor Inventory Calculator
         </h1>
         <p class="text-lg text-slate-400 mt-2">
-          Manage and calculate resistor combinations with ease.Created by your
-          boy Saadi.
+          Manage and calculate resistor combinations with ease.
         </p>
       </header>
 
@@ -718,28 +717,37 @@
           return;
         }
 
-        const tolerance = 0.01;
+        const tolerance = 0.05; // 5% tolerance
         const results = [];
 
-        // Sort by quantity DESC to favor abundant resistors
-        const availableResistors = inventory
+        // Only keep resistors within a useful range
+        const usefulResistors = inventory.filter(
+          (r) =>
+            r.value >= targetResistance / 1000 &&
+            r.value <= targetResistance * 5
+        );
+
+        const availableResistors = usefulResistors
           .flatMap((r) => Array(r.quantity).fill(r))
           .sort((a, b) => b.quantity - a.quantity);
 
+        if (availableResistors.length === 0) {
+          calculationResult.innerHTML =
+            '<p class="text-center text-red-400">No useful resistors found in inventory for this target.</p>';
+          return;
+        }
+
         const memo = new Set();
 
-        // Format expression
         function fmtPath(path) {
           return path.map((p) => formatResistance(p.value)).join(" + ");
         }
 
-        // Parallel equivalent for any number of resistors
         function parallel(resistors) {
           const sum = resistors.reduce((acc, r) => acc + 1 / r.value, 0);
           return 1 / sum;
         }
 
-        // Unique hash for memoization
         function hash(path) {
           return path
             .map((r) => r.value)
@@ -752,9 +760,8 @@
 
           const pathHash = hash(path);
           if (memo.has(pathHash)) return;
-          memo.add(pathHash);
+          if (path.length > 1) memo.add(pathHash); // Only memoize meaningful combos
 
-          // Series check
           const seriesSum = path.reduce((sum, r) => sum + r.value, 0);
           if (
             Math.abs(seriesSum - targetResistance) / targetResistance <
@@ -768,26 +775,26 @@
             });
           }
 
-          // Parallel group checks for 2 or 3
-          if (remaining.length >= 2) {
+          // Skip expensive parallel checks after depth 3
+          if (depth <= 3 && remaining.length >= 2) {
             for (let i = 0; i < remaining.length; i++) {
               for (let j = i + 1; j < remaining.length; j++) {
-                const pGroup = [remaining[i], remaining[j]];
-                const remainingAfterP = remaining.filter(
-                  (_, idx) => idx !== i && idx !== j
-                );
-                const baseSum = seriesSum + parallel(pGroup);
+                const r1 = remaining[i],
+                  r2 = remaining[j];
+                const pVal = parallel([r1, r2]);
+                const baseSum = seriesSum + pVal;
+
                 if (
                   Math.abs(baseSum - targetResistance) / targetResistance <
                   tolerance
                 ) {
                   const expr =
                     (path.length > 0 ? fmtPath(path) + " + " : "") +
-                    `(${pGroup
-                      .map((r) => formatResistance(r.value))
-                      .join(" || ")})`;
+                    `(${formatResistance(r1.value)} || ${formatResistance(
+                      r2.value
+                    )})`;
                   results.push({
-                    combination: [...path, ...pGroup],
+                    combination: [...path, r1, r2],
                     expression: expr,
                     total: baseSum,
                     type: "Series/Parallel",
@@ -797,7 +804,6 @@
             }
           }
 
-          // Recursive call
           for (let i = 0; i < remaining.length; i++) {
             const r = remaining[i];
             recurse(
@@ -808,7 +814,7 @@
           }
         }
 
-        // Direct match
+        // Direct match first
         const direct = availableResistors.find(
           (r) =>
             Math.abs(r.value - targetResistance) / targetResistance < tolerance
@@ -823,7 +829,6 @@
         }
 
         recurse([], availableResistors, 0);
-
         renderCalculationResults(results, targetResistance);
       }
 
@@ -1036,5 +1041,8 @@
         updateInputMethod();
       });
     </script>
+    <footer class="text-lg text-slate-400 mt-2">
+      Created by Muhammad Saad - V1.1
+    </footer>
   </body>
 </html>
